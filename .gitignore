@@ -1,0 +1,29 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+env/
+venv/
+
+# IDE interactions
+.vscode/
+.idea/
+.DS_Store
+
+# Ephemeris Data (High size)
+*.bsp
+de421.bsp
+
+# Generated Files
+demo_output.json
+
+# Secrets / Credentials
+credentials.json
+token.json
+client_secret*.json

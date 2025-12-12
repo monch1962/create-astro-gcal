@@ -41,9 +41,14 @@ Tracks the key solar points of the year.
 *   **Calendar**: `Astro: Seasons`
 
 ### 7. Moon Features
-Tracks key lunar orbital events.
-*   **Events**: North/South Nodes (Ecliptic Crossings), Lunar Max North/South (Declination Extremes).
-*   **Calendar**: `Astro: Moon Features`
+Tracks specific Lunar events and phases.
+*   **Events**: North/South Nodes (Ecliptic Crossings), Lunar Max North/South (Declination Extremes), **Moon Phases** (New, Full, 1st/3rd Quarter).
+*   **Calendar**: `Astro: Moon Features` and `Astro: Moon Phases`
+
+### 8. Zodiac Ingress
+Tracks when planets enter a new Zodiac Sign (Aries, Taurus, etc.).
+*   **Events**: Planet Enters [Sign].
+*   **Calendar**: `Astro: {Planet} Zodiac`
 
 ---
 
@@ -95,9 +100,11 @@ The application organizes events into specific calendars to keep your view clean
 | **Astro: Solar Eclipses** | Solar Eclipses |
 | **Astro: Lunar Eclipses** | Lunar Eclipses |
 | **Astro: Moon Features** | North/South Nodes, Declination Extremes |
+| **Astro: Moon Phases** | New, Full, First/Last Quarter |
 | **Astro: {Planet} Almanac** | Rise, Set, MC, IC |
 | **Astro: {Planet} Divisions** | 1/3, 1/8, 1/19 Intervals |
 | **Astro: {Planet} Geo** | Geocentric Aspects, Retrograde Stations |
 | **Astro: {Planet} Helio** | Heliocentric Aspects |
+| **Astro: {Planet} Zodiac** | Zodiac Sign Entries |
 
 *Note: Replace {Planet} with Mars, Venus, Jupiter, etc.*

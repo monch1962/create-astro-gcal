@@ -27,8 +27,9 @@ def get_eclipses(year_start, year_end):
         # --- Solar Eclipse (New Moon) ---
         if phase == 0: 
             # Sun/Moon radii ~0.26 deg each. Contact ~ 0.53 deg.
-            # We use 0.8 to catch everything safely.
-            SEP_LIMIT_SOLAR = 0.8
+            # Sun/Moon radii ~0.26 deg each. Parallax ~1.0 deg.
+            # Limit ~ 1.5 deg to catch all partials.
+            SEP_LIMIT_SOLAR = 1.5
             
             def get_solar_sep(time):
                 astrometric = earth.at(time).observe(sun)

@@ -62,6 +62,8 @@ CALENDAR_NAMES = {
 
 ENABLE_SEASONS = True
 ENABLE_MOON_FEATURES = True
+ENABLE_ZODIAC = True
+ENABLE_MOON_PHASES = True
 
 # Specific settings
 CONJUNCTION_PLANETS = ['mars', 'jupiter', 'saturn', 'venus']

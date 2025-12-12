@@ -164,6 +164,33 @@ def main():
         else:
             print("  No moon feature events found.")
 
+    # --- Zodiac Ingress ---
+    if getattr(config, 'ENABLE_ZODIAC', False):
+        print("Processing Zodiac Ingress...")
+        from astro import zodiac
+        events = zodiac.get_zodiac_ingress(
+            config.START_YEAR, config.END_YEAR,
+            bodies=config.ALMANAC_BODIES # Reuse list of major bodies
+        )
+        if events:
+            for e in events:
+                all_events.append(e)
+            print(f"  Found {len(events)} zodiac ingress events.")
+        else:
+            print("  No zodiac ingress events found.")
+
+    # --- Moon Phases ---
+    if getattr(config, 'ENABLE_MOON_PHASES', False):
+        print("Processing Moon Phases...")
+        from astro import moon_phases
+        events = moon_phases.get_moon_phases(config.START_YEAR, config.END_YEAR)
+        if events:
+            for e in events:
+                all_events.append(e)
+            print(f"  Found {len(events)} moon phase events.")
+        else:
+            print("  No moon phase events found.")
+
     # 4. Output Logic
     print(f"\nTotal Events Generated: {len(all_events)}")
     

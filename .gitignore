@@ -27,3 +27,6 @@ demo_output.json
 credentials.json
 token.json
 client_secret*.json
+
+# Calculated calendars
+ics_calendars/*

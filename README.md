@@ -50,6 +50,11 @@ Tracks when planets enter a new Zodiac Sign (Aries, Taurus, etc.).
 *   **Events**: Planet Enters [Sign].
 *   **Calendar**: `Astro: {Planet} Zodiac`
 
+### 9. Year Progress
+Dividers for both the Calendar Year (Jan 1) and Solar Year (Vernal Equinox).
+*   **Events**: 1/16th Intervals (e.g., 6.25%, 50%), Square Number Days (Day 1, 4, 9... 361).
+*   **Calendars**: `Astro: Calendar Year Progress` and `Astro: Solar Year Progress`
+
 ---
 
 ## Installation
@@ -106,5 +111,7 @@ The application organizes events into specific calendars to keep your view clean
 | **Astro: {Planet} Geo** | Geocentric Aspects, Retrograde Stations |
 | **Astro: {Planet} Helio** | Heliocentric Aspects |
 | **Astro: {Planet} Zodiac** | Zodiac Sign Entries |
+| **Astro: Calendar Year Progress** | Jan 1 Start - 1/16ths, Square Days |
+| **Astro: Solar Year Progress** | Equinox Start - 1/16ths, Square Days |
 
 *Note: Replace {Planet} with Mars, Venus, Jupiter, etc.*

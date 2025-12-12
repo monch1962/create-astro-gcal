@@ -191,6 +191,26 @@ def main():
         else:
             print("  No moon phase events found.")
 
+    # --- Calendar Year Progress ---
+    if getattr(config, 'ENABLE_CALENDAR_YEAR_PROGRESS', False):
+        print("Processing Calendar Year Progress...")
+        from astro import year_progress
+        events = year_progress.get_calendar_year_events(config.START_YEAR, config.END_YEAR)
+        if events:
+            for e in events:
+                all_events.append(e)
+            print(f"  Found {len(events)} calendar year progress events.")
+
+    # --- Solar Year Progress ---
+    if getattr(config, 'ENABLE_SOLAR_YEAR_PROGRESS', False):
+        print("Processing Solar Year Progress...")
+        from astro import year_progress
+        events = year_progress.get_solar_year_events(config.START_YEAR, config.END_YEAR)
+        if events:
+            for e in events:
+                all_events.append(e)
+            print(f"  Found {len(events)} solar year progress events.")
+
     # 4. Output Logic
     print(f"\nTotal Events Generated: {len(all_events)}")
     

@@ -1,5 +1,6 @@
 from skyfield.api import load
 from skyfield.framelib import ecliptic_frame
+import numpy as np
 import datetime
 
 # Define aspect angles
@@ -15,7 +16,7 @@ ASPECTS = {
 
 def get_aspects(year_start, year_end, planets_to_check, aspects_to_check, orb=5.0, center_body='earth', ephemeris=None):
     """
-    Finds exact astrological aspects between specified planets.
+    Finds exact astrological aspects between specified planets using vectorized calculation.
     center_body: 'earth' (Geocentric) or 'sun' (Heliocentric).
     """
     ts = load.timescale()
@@ -24,18 +25,13 @@ def get_aspects(year_start, year_end, planets_to_check, aspects_to_check, orb=5.
     else:
         eph = load('de421.bsp')
     
-    # Define observer based on center_body
+    # Define observer
     if center_body.lower() == 'sun':
         observer = eph['sun']
     else:
         observer = eph['earth']
     
-    t0 = ts.utc(year_start, 1, 1)
-    t1 = ts.utc(year_end + 1, 1, 1)
-
-    events_list = []
-    
-    # Map common names to ephemeris names
+    # 1. Map Names and Filter
     name_map = {
         'mercury': 'mercury',
         'venus': 'venus',
@@ -54,12 +50,10 @@ def get_aspects(year_start, year_end, planets_to_check, aspects_to_check, orb=5.
     for p in planets_to_check:
         p_lower = p.lower()
         if p_lower in name_map:
-            # Filter invalid targets based on center
             mapped_name = name_map[p_lower]
-            if center_body.lower() == 'sun' and mapped_name == 'sun':
-                continue # Cannot observe Sun from Sun
-            if center_body.lower() == 'earth' and mapped_name == 'earth':
-                continue # Cannot observe Earth from Earth
+            # Filter self-observation
+            if center_body.lower() == 'sun' and mapped_name == 'sun': continue
+            if center_body.lower() == 'earth' and mapped_name == 'earth': continue
             target_names.append(mapped_name)
         else:
             target_names.append(p)
@@ -67,160 +61,146 @@ def get_aspects(year_start, year_end, planets_to_check, aspects_to_check, orb=5.
     planet_objs = {name: eph[name] for name in target_names}
     names = list(planet_objs.keys())
 
-    # Helper to get longitudes at a specific time
-    def get_longitudes(t):
-        longitudes = {}
-        for name, body in planet_objs.items():
-            # Ecliptic Longitude relative to observer
-            _, lon, _ = observer.at(t).observe(body).apparent().frame_latlon(ecliptic_frame)
-            longitudes[name] = lon.degrees
-        return longitudes
-
-    # Optimization: Pre-calculate daily steps? 
-    # Or just iterate day by day. 365 days is fast.
-    days = int(t1 - t0)
+    # 2. Vectorized Position Calculation
+    # Generate time grid. 
+    # Daily steps (like original code) are sufficient even for Moon (~13 deg/day).
+    start_dt = datetime.datetime(year_start, 1, 1, tzinfo=datetime.timezone.utc)
+    end_dt = datetime.datetime(year_end + 1, 1, 1, tzinfo=datetime.timezone.utc)
+    days = (end_dt - start_dt).days + 1
     
-    previous_lons = get_longitudes(t0)
+    steps_per_day = 1 
+    total_steps = days * steps_per_day
     
-    for day in range(days + 1):
-        t_start = ts.utc(year_start, 1, 1 + day)
-        t_end = ts.utc(year_start, 1, 1 + day + 1)
-        
-        # We already have start from previous loop
-        lons_start = previous_lons
-        lons_end = get_longitudes(t_end) # This becomes next previous
-        
-        # Check every pair
-        # Check every pair
-        for i in range(len(names)):
-            for j in range(i + 1, len(names)):
-                n1 = names[i]
-                n2 = names[j]
-                
-                l1_s = lons_start[n1]
-                l2_s = lons_start[n2]
-                diff_start = (l1_s - l2_s) % 360
-                
-                l1_e = lons_end[n1]
-                l2_e = lons_end[n2]
-                diff_end = (l1_e - l2_e) % 360
-                
-                # Check for crossing of any aspect
-                for asp, target_angle in ASPECTS.items():
-                    if asp not in aspects_to_check:
-                        continue
-                        
-                    # We need to check if we crossed 'target_angle' or '360 - target_angle'?
-                    # Actually, usually aspect is just angle separation.
-                    # so absolute separation = target_angle.
-                    # This happens when diff = target_angle OR diff = 360 - target_angle.
-                    
-                    targets = [target_angle, 360 - target_angle]
-                    if target_angle == 0 or target_angle == 180:
-                         targets = [target_angle]
-                    
-                    for tgt in targets:
-                        # Check if tgt is "between" diff_start and diff_end shortest path
-                        # Simple check: (diff_start - tgt) and (diff_end - tgt) have different signs?
-                        # Care with wrap around.
-                        
-                        # Let's normalize everything relative to tgt to be [-180, 180]
-                        d_s = (diff_start - tgt + 180) % 360 - 180
-                        d_e = (diff_end - tgt + 180) % 360 - 180
-                        
-                        if d_s * d_e < 0 and abs(d_s - d_e) < 180:
-                            # Crossed!
-                            # Find exact time via binary search
-                            
-                            def get_diff_at(t):
-                                _, lo1, _ = observer.at(t).observe(planet_objs[n1]).apparent().frame_latlon(ecliptic_frame)
-                                _, lo2, _ = observer.at(t).observe(planet_objs[n2]).apparent().frame_latlon(ecliptic_frame)
-                                return (lo1.degrees - lo2.degrees) % 360
+    # Generate array of offsets in hours
+    hours_vector = np.arange(total_steps) * (24.0 / steps_per_day)
+    t_vector = ts.utc(year_start, 1, 1, hours_vector)
+    
+    # Pre-calculate longitudes for all bodies
+    # Store as dictionary of arrays
+    longitudes = {}
+    
+    for name, body in planet_objs.items():
+        _, lon, _ = observer.at(t_vector).observe(body).apparent().frame_latlon(ecliptic_frame)
+        longitudes[name] = lon.degrees # NumPy array
 
-                            # Binary search for EXACT peak (0 deg deviation from target)
-                            low = 0.0
-                            high = 1.0
-                            for _ in range(15): # ~3 seconds precision
-                                mid = (low + high) / 2
-                                t_mid = ts.utc(year_start, 1, 1 + day + mid)
-                                diff_mid = get_diff_at(t_mid)
-                                
-                                d_m = (diff_mid - tgt + 180) % 360 - 180
-                                
-                                if d_s * d_m < 0:
-                                    high = mid
-                                    # d_e becomes d_m effectively
-                                else:
-                                    low = mid
-                                    # d_s becomes d_m effectively
-                                    d_s = d_m
-                            
-                            t_exact = ts.utc(year_start, 1, 1 + day + low)
-                            
-                            # Calculate Orb Entry/Exit
-                            # We search backwards/forwards until deviation > orb
-                            
-                            def get_dev(time):
-                                diff_val = get_diff_at(time)
-                                d = (diff_val - tgt + 180) % 360 - 180
-                                return abs(d)
+    events_list = []
+    
+    # Helper for root finding using Bisection
+    def bisection_search(f, t_start, t_end, tol_days=1e-6): # ~0.1 seconds precision
+        jd_min = t_start.tt
+        jd_max = t_end.tt
+        
+        v_min = f(t_start)
+        
+        for _ in range(20): # 20 iterations is sufficient for high precision
+            jd_mid = (jd_min + jd_max) / 2.0
+            if (jd_max - jd_min) < tol_days:
+                return ts.tt_jd(jd_mid)
+                
+            t_mid = ts.tt_jd(jd_mid)
+            v_mid = f(t_mid)
+            
+            if v_mid == 0:
+                 return t_mid
+            
+            if v_min * v_mid < 0:
+                jd_max = jd_mid
+                # v_max = v_mid
+            else:
+                jd_min = jd_mid
+                v_min = v_mid
+                
+        return ts.tt_jd((jd_min + jd_max) / 2.0)
 
-                            # Find Start (Entry)
-                            # Search back in steps until dev > orb
-                            t_start_search = t_exact
+    # Function Factories
+    def get_diff_func(body1, body2, target):
+        def f(t):
+            _, l1, _ = observer.at(t).observe(body1).apparent().frame_latlon(ecliptic_frame)
+            _, l2, _ = observer.at(t).observe(body2).apparent().frame_latlon(ecliptic_frame)
+            d = (l1.degrees - l2.degrees) % 360
+            return (d - target + 180) % 360 - 180
+        return f
+
+    def get_orb_func(body1, body2, target, orb):
+        def f(t):
+            _, l1, _ = observer.at(t).observe(body1).apparent().frame_latlon(ecliptic_frame)
+            _, l2, _ = observer.at(t).observe(body2).apparent().frame_latlon(ecliptic_frame)
+            d = (l1.degrees - l2.degrees) % 360
+            dist = (d - target + 180) % 360 - 180
+            return abs(dist) - orb
+        return f
+
+    # 3. Pairwise Comparison
+    for i in range(len(names)):
+        for j in range(i + 1, len(names)):
+            n1 = names[i]
+            n2 = names[j]
+            
+            l1_arr = longitudes[n1]
+            l2_arr = longitudes[n2]
+            
+            # Difference array
+            diff_arr = (l1_arr - l2_arr) % 360
+            
+            for asp, angle in ASPECTS.items():
+                if asp not in aspects_to_check: continue
+                
+                targets = [angle]
+                if angle != 0 and angle != 180:
+                    targets.append(360 - angle)
+                
+                for tgt in targets:
+                    # Detect crossings in the coarse array
+                    val = (diff_arr - tgt + 180) % 360 - 180
+                    
+                    # Sign change detection
+                    sign_change = (val[:-1] * val[1:] <= 0)
+                    no_wrap = (np.abs(val[:-1] - val[1:]) < 180)
+                    candidate_indices = np.where(sign_change & no_wrap)[0]
+                    
+                    for idx in candidate_indices:
+                        t_start = t_vector[idx]
+                        t_end = t_vector[idx+1]
+                        
+                        # Find exact root
+                        func = get_diff_func(planet_objs[n1], planet_objs[n2], tgt)
+                        try:
+                            t_exact = bisection_search(func, t_start, t_end)
+                            
+                            # Calculate Duration (Orb)
+                            orb_func = get_orb_func(planet_objs[n1], planet_objs[n2], tgt, orb)
+                            
+                            # Duration Search Window (e.g., 30 days back/fwd or dynamic)
+                            # Simple approach: Check coarse grid to find bracket? 
+                            # Or just blind search 30 days if planet is slow?
+                            
+                            # Entry
                             t_entry = t_exact
-                            
-                            # Step size: 1 day? For outer planets orb can be weeks.
-                            # For Moon it is hours.
-                            # We'll step 1 hour for safety? Or dynamic.
-                            # Step: 4 hours (1/6 day)
-                            step_days = 1.0/6.0
-                            found_entry = False
-                            
-                            
-                            for search_step in range(200): # max ~30 days back
-                                t_prev = ts.utc(t_start_search.utc_datetime() - datetime.timedelta(hours=4))
-                                dev_prev = get_dev(t_prev)
-                                if dev_prev > orb:
-                                    # Entry is between t_prev and t_start_search
-                                    # Binary search
-                                    lo = t_prev
-                                    hi = t_start_search
-                                    for _ in range(10):
-                                        mid = ts.utc(lo.utc_datetime() + (hi.utc_datetime() - lo.utc_datetime()) / 2)
-                                        if get_dev(mid) > orb: lo = mid
-                                        else: hi = mid
-                                    t_entry = hi
-                                    found_entry = True
-                                    break
-                                t_start_search = t_prev
+                            try:
+                                # Look back 30 days
+                                t_back = ts.utc(t_exact.utc_datetime() - datetime.timedelta(days=30))
+                                # Check if orb_func changes sign between t_back and t_exact
+                                # Only if we entered the orb window.
+                                if orb_func(t_back) * orb_func(t_exact) < 0:
+                                     t_entry = bisection_search(orb_func, t_back, t_exact)
+                                else:
+                                     # Maybe closer? Try 1 day
+                                     t_back_1d = ts.utc(t_exact.utc_datetime() - datetime.timedelta(days=1))
+                                     if orb_func(t_back_1d) * orb_func(t_exact) < 0:
+                                         t_entry = bisection_search(orb_func, t_back_1d, t_exact)
+                            except: pass
                                 
-                            if not found_entry:
-                                t_entry = t_exact # Fallback if orb is huge (>30 days half-width)
-
-                            # Find End (Exit)
-                            t_end_search = t_exact
+                            # Exit
                             t_exit = t_exact
-                            found_exit = False
-                            
-                            
-                            for search_step in range(200):
-                                t_next = ts.utc(t_end_search.utc_datetime() + datetime.timedelta(hours=4))
-                                dev_next = get_dev(t_next)
-                                if dev_next > orb:
-                                    lo = t_end_search
-                                    hi = t_next
-                                    for _ in range(10):
-                                        mid = ts.utc(lo.utc_datetime() + (hi.utc_datetime() - lo.utc_datetime()) / 2)
-                                        if get_dev(mid) < orb: lo = mid
-                                        else: hi = mid
-                                    t_exit = lo
-                                    found_exit = True
-                                    break
-                                t_end_search = t_next
-                                
-                            if not found_exit:
-                                t_exit = t_exact
+                            try:
+                                t_fwd = ts.utc(t_exact.utc_datetime() + datetime.timedelta(days=30))
+                                if orb_func(t_exact) * orb_func(t_fwd) < 0:
+                                     t_exit = bisection_search(orb_func, t_exact, t_fwd)
+                                else:
+                                     t_fwd_1d = ts.utc(t_exact.utc_datetime() + datetime.timedelta(days=1))
+                                     if orb_func(t_exact) * orb_func(t_fwd_1d) < 0:
+                                         t_exit = bisection_search(orb_func, t_exact, t_fwd_1d)
+                            except: pass
 
                             dt_start = t_entry.utc_datetime()
                             dt_end = t_exit.utc_datetime()
@@ -235,10 +215,12 @@ def get_aspects(year_start, year_end, planets_to_check, aspects_to_check, orb=5.
                                 'summary': summary,
                                 'start_time': dt_start,
                                 'duration_minutes': int(duration_min),
-                                'description': f"{n1} and {n2} exact {asp} ({target_angle} deg). Orb: {orb} deg.",
+                                'description': f"{n1} and {n2} exact {asp} ({tgt} deg). Orb: {orb} deg.",
                                 'participants': [n1, n2]
                             })
-
-        previous_lons = lons_end
+                            
+                        except Exception as e:
+                            # print(f"Error calculating aspect {summary}: {e}")
+                            continue
 
     return events_list

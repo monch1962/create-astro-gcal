@@ -69,4 +69,4 @@ ENABLE_SOLAR_YEAR_PROGRESS = True
 ENABLE_PATTERNS = True
 
 # Specific settings
-CONJUNCTION_PLANETS = ['mars', 'jupiter', 'saturn', 'venus']
+CONJUNCTION_PLANETS = ['mercury', 'mars', 'jupiter', 'saturn', 'neptune', 'venus', 'uranus', 'pluto']

@@ -2,7 +2,7 @@ import datetime
 
 # Year range to generate events for
 START_YEAR = datetime.date.today().year
-END_YEAR = START_YEAR # Generate for current year only by default
+END_YEAR = START_YEAR + 1 # Generate for current year and next year by default
 
 # Output Mode
 # Options: 'ics' (Export Files), 'json' (Demo Output)

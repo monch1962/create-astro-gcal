@@ -1,4 +1,5 @@
-skyfield
-pytz
-geopy
-ics
+skyfield>=1.53
+pytz>=2025.2
+geopy>=2.4.1
+ics>=0.7.2
+numpy>=2.3.5

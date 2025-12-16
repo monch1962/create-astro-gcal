@@ -1,11 +1,21 @@
 import config
-from astro import eclipses, almanac, aspects, retrograde, seasons, moon_features, zodiac, moon_phases, year_progress, patterns
-from collections import defaultdict
+import logging
 import sys
 import datetime
 import concurrent.futures
+from collections import defaultdict
 from utils import ics_writer
-import logging
+from astro.engine import AstroEngine
+from astro.eclipses import EclipseCalculator
+from astro.almanac import AlmanacCalculator
+from astro.aspects import AspectCalculator
+from astro.retrograde import RetrogradeCalculator
+from astro.seasons import SeasonCalculator
+from astro.moon_features import MoonFeatureCalculator
+from astro.zodiac import ZodiacCalculator
+from astro.moon_phases import MoonPhaseCalculator
+from astro.year_progress import YearProgressCalculator
+from astro.patterns import PatternCalculator
 
 # Configure logging
 logging.basicConfig(
@@ -19,7 +29,10 @@ logger = logging.getLogger(__name__)
 
 def task_generate_eclipses(start_year, end_year):
     logger.info("  [Task] Eclipses started...")
-    events = eclipses.get_eclipses(start_year, end_year)
+    engine = AstroEngine()
+    calc = EclipseCalculator(engine)
+    events = calc.get_eclipses(start_year, end_year)
+    
     processed_events = []
     if events:
         for e in events:
@@ -35,7 +48,9 @@ def task_generate_aspects(start_year, end_year, bodies, aspects_list, orb, cente
     sys_label = "geocentric" if center_body == 'earth' else "heliocentric"
     logger.info(f"  [Task] Aspects ({sys_label}) started...")
     
-    events = aspects.get_aspects(
+    engine = AstroEngine()
+    calc = AspectCalculator(engine)
+    events = calc.get_aspects(
         start_year, end_year, 
         planets_to_check=bodies,
         aspects_to_check=aspects_list,
@@ -73,7 +88,9 @@ def task_generate_aspects(start_year, end_year, bodies, aspects_list, orb, cente
 
 def task_generate_almanac(start_year, end_year, bodies, location_name, lat, lon):
     logger.info("  [Task] Almanac started...")
-    events = almanac.get_almanac_events(
+    engine = AstroEngine()
+    calc = AlmanacCalculator(engine)
+    events = calc.get_almanac_events(
         start_year, end_year, 
         bodies=bodies,
         location_name=location_name,
@@ -95,7 +112,9 @@ def task_generate_almanac(start_year, end_year, bodies, location_name, lat, lon)
 
 def task_generate_retrograde(start_year, end_year, planets):
     logger.info("  [Task] Retrograde started...")
-    events = retrograde.get_retrograde_full(start_year, end_year, planets)
+    engine = AstroEngine()
+    calc = RetrogradeCalculator(engine)
+    events = calc.get_retrograde_events(start_year, end_year, planets)
     processed_events = []
     if events:
             for e in events:
@@ -110,7 +129,9 @@ def task_generate_retrograde(start_year, end_year, planets):
 
 def task_generate_seasons(start_year, end_year):
     logger.info("  [Task] Seasons started...")
-    events = seasons.get_seasons(start_year, end_year)
+    engine = AstroEngine()
+    calc = SeasonCalculator(engine)
+    events = calc.get_seasons(start_year, end_year)
     processed_events = []
     if events:
         for e in events:
@@ -122,7 +143,9 @@ def task_generate_seasons(start_year, end_year):
 
 def task_generate_moon_features(start_year, end_year):
     logger.info("  [Task] Moon Features started...")
-    events = moon_features.get_moon_features(start_year, end_year)
+    engine = AstroEngine()
+    calc = MoonFeatureCalculator(engine)
+    events = calc.get_moon_features(start_year, end_year)
     processed_events = []
     if events:
         for e in events:
@@ -134,31 +157,41 @@ def task_generate_moon_features(start_year, end_year):
 
 def task_generate_zodiac(start_year, end_year, bodies):
     logger.info("  [Task] Zodiac Ingress started...")
-    events = zodiac.get_zodiac_ingress(start_year, end_year, bodies)
+    engine = AstroEngine()
+    calc = ZodiacCalculator(engine)
+    events = calc.get_zodiac_ingress(start_year, end_year, bodies)
     logger.info(f"  [Task] Zodiac Ingress finished ({len(events) if events else 0} events).")
     return events or []
 
 def task_generate_moon_phases(start_year, end_year):
     logger.info("  [Task] Moon Phases started...")
-    events = moon_phases.get_moon_phases(start_year, end_year)
+    engine = AstroEngine()
+    calc = MoonPhaseCalculator(engine)
+    events = calc.get_moon_phases(start_year, end_year)
     logger.info(f"  [Task] Moon Phases finished ({len(events) if events else 0} events).")
     return events or []
 
 def task_generate_calendar_year(start_year, end_year):
     logger.info("  [Task] Calendar Year Progress started...")
-    events = year_progress.get_calendar_year_events(start_year, end_year)
+    engine = AstroEngine()
+    calc = YearProgressCalculator(engine)
+    events = calc.get_calendar_year_events(start_year, end_year)
     logger.info(f"  [Task] Calendar Year Progress finished ({len(events) if events else 0} events).")
     return events or []
 
 def task_generate_solar_year(start_year, end_year):
     logger.info("  [Task] Solar Year Progress started...")
-    events = year_progress.get_solar_year_events(start_year, end_year)
+    engine = AstroEngine()
+    calc = YearProgressCalculator(engine)
+    events = calc.get_solar_year_events(start_year, end_year)
     logger.info(f"  [Task] Solar Year Progress finished ({len(events) if events else 0} events).")
     return events or []
 
 def task_generate_patterns(start_year, end_year, bodies):
     logger.info("  [Task] Patterns (Square/Trine) started...")
-    events = patterns.get_square_trine_patterns(start_year, end_year, bodies)
+    engine = AstroEngine()
+    calc = PatternCalculator(engine)
+    events = calc.get_square_trine_patterns(start_year, end_year, bodies)
     logger.info(f"  [Task] Patterns finished ({len(events) if events else 0} events).")
     return events or []
 

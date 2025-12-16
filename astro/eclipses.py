@@ -3,12 +3,15 @@ from skyfield import almanac
 import datetime
 import pytz
 
-def get_eclipses(year_start, year_end):
+def get_eclipses(year_start, year_end, ephemeris=None):
     """
     Calculates solar eclipses using New Moon events and angular separation.
     """
     ts = load.timescale()
-    eph = load('de421.bsp')
+    if ephemeris:
+        eph = ephemeris
+    else:
+        eph = load('de421.bsp')
     earth = eph['earth']
     sun = eph['sun']
     moon = eph['moon']

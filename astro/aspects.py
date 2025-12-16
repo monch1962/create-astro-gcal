@@ -13,13 +13,16 @@ ASPECTS = {
     'opposition': 180
 }
 
-def get_aspects(year_start, year_end, planets_to_check, aspects_to_check, orb=5.0, center_body='earth'):
+def get_aspects(year_start, year_end, planets_to_check, aspects_to_check, orb=5.0, center_body='earth', ephemeris=None):
     """
     Finds exact astrological aspects between specified planets.
     center_body: 'earth' (Geocentric) or 'sun' (Heliocentric).
     """
     ts = load.timescale()
-    eph = load('de421.bsp')
+    if ephemeris:
+        eph = ephemeris
+    else:
+        eph = load('de421.bsp')
     
     # Define observer based on center_body
     if center_body.lower() == 'sun':

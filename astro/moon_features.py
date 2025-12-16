@@ -4,12 +4,15 @@ from skyfield.framelib import ecliptic_frame
 import numpy as np
 import datetime
 
-def get_moon_features(year_start, year_end):
+def get_moon_features(year_start, year_end, ephemeris=None):
     """
-    Calculates Lunar Nodes (North/South) and Declination Extremes (Max N/S).
+    Calculates Lunar Nodes (North/South) and Lunar Declination Extremes (Major/Minor Standstills).
     """
     ts = load.timescale()
-    eph = load('de421.bsp')
+    if ephemeris:
+        eph = ephemeris
+    else:
+        eph = load('de421.bsp')
     moon = eph['moon']
     earth = eph['earth']
     

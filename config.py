@@ -66,6 +66,7 @@ ENABLE_ZODIAC = True
 ENABLE_MOON_PHASES = True
 ENABLE_CALENDAR_YEAR_PROGRESS = True
 ENABLE_SOLAR_YEAR_PROGRESS = True
+ENABLE_PATTERNS = True
 
 # Specific settings
 CONJUNCTION_PLANETS = ['mars', 'jupiter', 'saturn', 'venus']

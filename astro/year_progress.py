@@ -83,12 +83,15 @@ def get_calendar_year_events(year_start, year_end):
             
     return events_list
 
-def get_solar_year_events(year_start, year_end):
+def get_solar_year_events(year_start, year_end, ephemeris=None):
     """
     Generates events for Solar Year (Vernal Equinox - Vernal Equinox).
     """
     ts = load.timescale()
-    eph = load('de421.bsp')
+    if ephemeris:
+        eph = ephemeris
+    else:
+        eph = load('de421.bsp')
     
     events_list = []
     

@@ -45,10 +45,11 @@ def main():
         print("Processing Planetary Aspects...")
         from astro import aspects
         
-        systems = ['geocentric', 'heliocentric']
+        systems = ['earth', 'sun']
         
         for sys_name in systems:
-            print(f"  Generating {sys_name} aspects...")
+            sys_label = "geocentric" if sys_name == 'earth' else "heliocentric"
+            print(f"  Generating {sys_label} aspects...")
             events = aspects.get_aspects(
                 config.START_YEAR, config.END_YEAR, 
                 planets_to_check=config.CONJUNCTION_PLANETS,
@@ -59,16 +60,13 @@ def main():
             
             if events:
                 for e in events:
-                    # Heliocentric Modifications
-                    if sys_name == 'heliocentric':
+                    if sys_name == 'sun':
                         e['summary'] = f"{e['summary']} (Helio)"
                         e['description'] = f"(Heliocentric) {e['description']}"
                         
-                        # Calendar Logic
                         if 'participants' in e:
                              for p in e['participants']:
                                  p_clean = p.replace(' barycenter', '').title()
-                                 # We need a new dictionary to not reference original
                                  e_copy = e.copy()
                                  e_copy['calendar'] = f"Astro: {p_clean} Helio"
                                  all_events.append(e_copy)
@@ -77,7 +75,6 @@ def main():
                              all_events.append(e)
 
                     else:
-                        # Geocentric Logic (Standard)
                         if 'participants' in e:
                             for p in e['participants']:
                                 p_clean = p.replace(' barycenter', '').title()
@@ -87,18 +84,20 @@ def main():
                         else:
                             e['calendar'] = "Astro: Aspects Geo"
                             all_events.append(e)
-                print(f"    Found {len(events)} {sys_name} events.")
+                print(f"    Found {len(events)} {sys_label} events.")
             else:
-                 print(f"    No {sys_name} aspects found.")
+                 print(f"    No {sys_label} aspects found.")
 
-    # --- Almanac ---
+    # --- Almanac (Rise/Set/MC/IC) ---
     if config.ENABLE_ALMANAC:
         print("Processing Almanac (Rise/Set/MC/IC)...")
+        from astro import almanac
         events = almanac.get_almanac_events(
-            config.START_YEAR, config.END_YEAR,
-            lat, lon,
+            config.START_YEAR, config.END_YEAR, 
             bodies=config.ALMANAC_BODIES,
-            location_name=config.OBSERVER_CITY if config.OBSERVER_CITY else "Local Location"
+            location_name=config.OBSERVER_CITY if config.OBSERVER_CITY else "Local Location",
+            observer_lat=lat,
+            observer_lon=lon
         )
         if events:
             for e in events:
@@ -124,13 +123,10 @@ def main():
         if events:
              for e in events:
                  cal = e.get('calendar', 'Astro: Retrograde')
-                 # If it's a planet-specific calendar (e.g. Astro: Mars), append Geo
                  if cal.startswith('Astro: ') and not cal.endswith(' Geo') and 'Retrograde' not in cal:
                       e['calendar'] = f"{cal} Geo"
-                 # Capture just in case
                  elif 'calendar' not in e:
                       e['calendar'] = 'Astro: Retrograde Geo'
-                 
                  all_events.append(e)
              print(f"  Found {len(events)} retrograde events.")
         else:
@@ -142,11 +138,9 @@ def main():
         from astro import seasons
         events = seasons.get_seasons(config.START_YEAR, config.END_YEAR)
         if events:
-            for e in events:
-                if 'calendar' not in e:
-                    e['calendar'] = 'Astro: Seasons'
+             for e in events:
                 all_events.append(e)
-            print(f"  Found {len(events)} seasonal events.")
+             print(f"  Found {len(events)} seasonal events.")
         else:
             print("  No seasonal events found.")
 
@@ -156,11 +150,9 @@ def main():
         from astro import moon_features
         events = moon_features.get_moon_features(config.START_YEAR, config.END_YEAR)
         if events:
-            for e in events:
-                if 'calendar' not in e:
-                    e['calendar'] = 'Astro: Moon Features'
+             for e in events:
                 all_events.append(e)
-            print(f"  Found {len(events)} moon feature events.")
+             print(f"  Found {len(events)} moon feature events.")
         else:
             print("  No moon feature events found.")
 
@@ -169,13 +161,13 @@ def main():
         print("Processing Zodiac Ingress...")
         from astro import zodiac
         events = zodiac.get_zodiac_ingress(
-            config.START_YEAR, config.END_YEAR,
-            bodies=config.ALMANAC_BODIES # Reuse list of major bodies
+            config.START_YEAR, config.END_YEAR, 
+            bodies=config.ALMANAC_BODIES
         )
         if events:
-            for e in events:
+             for e in events:
                 all_events.append(e)
-            print(f"  Found {len(events)} zodiac ingress events.")
+             print(f"  Found {len(events)} zodiac ingress events.")
         else:
             print("  No zodiac ingress events found.")
 
@@ -190,7 +182,7 @@ def main():
             print(f"  Found {len(events)} moon phase events.")
         else:
             print("  No moon phase events found.")
-
+    
     # --- Calendar Year Progress ---
     if getattr(config, 'ENABLE_CALENDAR_YEAR_PROGRESS', False):
         print("Processing Calendar Year Progress...")
@@ -200,6 +192,8 @@ def main():
             for e in events:
                 all_events.append(e)
             print(f"  Found {len(events)} calendar year progress events.")
+        else:
+            print("  No calendar year progress events found.")
 
     # --- Solar Year Progress ---
     if getattr(config, 'ENABLE_SOLAR_YEAR_PROGRESS', False):
@@ -210,6 +204,23 @@ def main():
             for e in events:
                 all_events.append(e)
             print(f"  Found {len(events)} solar year progress events.")
+        else:
+            print("  No solar year progress events found.")
+
+    # --- Patterns (Square & Trine) ---
+    if getattr(config, 'ENABLE_PATTERNS', False):
+        print("Processing Patterns (Square & Trine)...")
+        from astro import patterns
+        pattern_events = patterns.get_square_trine_patterns(
+            config.START_YEAR, config.END_YEAR,
+            config.ALMANAC_BODIES
+        )
+        if pattern_events:
+            for e in pattern_events:
+                all_events.append(e)
+            print(f"  Found {len(pattern_events)} square & trine patterns.")
+        else:
+            print("  No square & trine patterns found.")
 
     # 4. Output Logic
     print(f"\nTotal Events Generated: {len(all_events)}")
@@ -239,9 +250,15 @@ def main():
             cal_name = e.get('calendar', 'Astro: General')
             events_by_cal[cal_name].append(e)
             
+        # Determine file prefix
+        if config.START_YEAR == config.END_YEAR:
+            file_prefix = str(config.START_YEAR)
+        else:
+            file_prefix = f"{config.START_YEAR}-{config.END_YEAR}"
+
         print("Exporting ICS files...")
         for cal_name, evts in events_by_cal.items():
-            ics_writer.write_ics(cal_name, evts)
+            ics_writer.write_ics(cal_name, evts, file_prefix=file_prefix)
     
     else:
         print(f"Unknown output mode: {config.OUTPUT_MODE}")

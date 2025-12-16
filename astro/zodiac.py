@@ -8,14 +8,17 @@ ZODIAC_SIGNS = [
     'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces'
 ]
 
-def get_zodiac_ingress(year_start, year_end, bodies=None):
+def get_zodiac_ingress(year_start, year_end, bodies=None, ephemeris=None):
     """
     Calculates when planets enter a new Zodiac sign (Geocentric Ecliptic Longitude).
     """
     ts = load.timescale()
+    if ephemeris:
+        eph = ephemeris
+    else:
+        eph = load('de421.bsp')
     t0 = ts.utc(year_start, 1, 1)
     t1 = ts.utc(year_end + 1, 1, 1)
-    eph = load('de421.bsp')
     earth = eph['earth']
     
     if bodies is None:

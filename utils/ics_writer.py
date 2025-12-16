@@ -2,7 +2,7 @@ from ics import Calendar, Event
 import os
 from datetime import datetime
 
-def write_ics(calendar_name, events, output_dir='ics_calendars'):
+def write_ics(calendar_name, events, output_dir='ics_calendars', file_prefix=''):
     """
     Writes a list of event dictionaries to an ICS file.
     """
@@ -27,8 +27,8 @@ def write_ics(calendar_name, events, output_dir='ics_calendars'):
             from datetime import timedelta
             evt.end = evt.begin + timedelta(minutes=duration)
         else:
-            # Point event
-            pass
+            # Point event - explicit zero duration to avoid 1h default
+            evt.end = evt.begin
             
         evt.description = e.get('description', '')
         
@@ -36,7 +36,10 @@ def write_ics(calendar_name, events, output_dir='ics_calendars'):
         
     # Sanitize filename
     safe_name = calendar_name.replace(':', '').replace('/', '-').replace(' ', '_')
-    filename = os.path.join(output_dir, f"{safe_name}.ics")
+    if file_prefix:
+        filename = os.path.join(output_dir, f"{file_prefix}_{safe_name}.ics")
+    else:
+        filename = os.path.join(output_dir, f"{safe_name}.ics")
     
     with open(filename, 'w') as f:
         f.writelines(c.serialize_iter())

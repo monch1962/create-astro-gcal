@@ -55,6 +55,11 @@ Dividers for both the Calendar Year (Jan 1) and Solar Year (Vernal Equinox).
 *   **Events**: 1/16th Intervals (e.g., 6.25%, 50%), Square Number Days (Day 1, 4, 9... 361).
 *   **Calendars**: `Astro: Calendar Year Progress` and `Astro: Solar Year Progress`
 
+### 10. Planetary Patterns
+Identifies complex aspect patterns.
+*   **Events**: Planet is simultaneously Square one body and Trine another.
+*   **Calendar**: `Astro: Square and Trine`
+
 ---
 
 ## Installation
@@ -92,7 +97,10 @@ Run the main script:
 python main.py
 ```
 
-*   **ICS Mode**: Check the `ics_calendars/` directory for generated `.ics` files.
+## Output Files
+The script generates `.ics` files in the `ics_calendars/` directory.
+Each file is prefixed with the generated year or range (e.g., `2025_Astro_...` or `2025-2027_Astro_...`).
+These can be imported into Google Calendar, Apple Calendar, or Outlook.
 *   **Demo/JSON Mode**: Check `demo_output.json` for raw event data.
 
 ## Calendars Generated
@@ -113,5 +121,6 @@ The application organizes events into specific calendars to keep your view clean
 | **Astro: {Planet} Zodiac** | Zodiac Sign Entries |
 | **Astro: Calendar Year Progress** | Jan 1 Start - 1/16ths, Square Days |
 | **Astro: Solar Year Progress** | Equinox Start - 1/16ths, Square Days |
+| **Astro: Square and Trine** | Simultaneous Square & Trine Overlaps |
 
 *Note: Replace {Planet} with Mars, Venus, Jupiter, etc.*

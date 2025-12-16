@@ -2,12 +2,15 @@ from skyfield.api import load
 from skyfield import almanac
 import datetime
 
-def get_seasons(year_start, year_end):
+def get_seasons(year_start, year_end, ephemeris=None):
     """
     Calculates Equinoxes and Solstices.
     """
     ts = load.timescale()
-    eph = load('de421.bsp')
+    if ephemeris:
+        eph = ephemeris
+    else:
+        eph = load('de421.bsp')
     
     t0 = ts.utc(year_start, 1, 1)
     t1 = ts.utc(year_end + 1, 1, 1)

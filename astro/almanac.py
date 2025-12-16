@@ -3,17 +3,19 @@ from skyfield import almanac
 import datetime
 import pytz
 
-def get_almanac_events(year_start, year_end, lat, lon, bodies=None, location_name="Local Location"):
+def get_almanac_events(year_start, year_end, bodies, location_name="Local Location", observer_lat=40.7128, observer_lon=-74.0060, ephemeris=None):
     """
-    Calculates Rise, Set, Midheaven (MC), and Nadir (IC) for specified bodies.
-    Also calculates 1/3, 1/8, and 1/19 divisions of the day/night arcs.
+    Calculates Rise, Set, Meridian Transit, and Nadir events for specified bodies.
     param location_name: Name of the location for the description (e.g. "New York").
     """
     ts = load.timescale()
+    if ephemeris:
+        eph = ephemeris
+    else:
+        eph = load('de421.bsp')
     if bodies is None:
         bodies = ['sun', 'moon']
-    eph = load('de421.bsp')
-    observer = wgs84.latlon(lat, lon)
+    observer = wgs84.latlon(observer_lat, observer_lon)
     
     t0 = ts.utc(year_start, 1, 1)
     t1 = ts.utc(year_end + 1, 1, 1)

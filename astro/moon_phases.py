@@ -1,12 +1,15 @@
 from skyfield.api import load
 from skyfield import almanac
 
-def get_moon_phases(year_start, year_end):
+def get_moon_phases(year_start, year_end, ephemeris=None):
     """
-    Calculates Moon Phases: New Moon, First Quarter, Full Moon, Last Quarter.
+    Generates events for New Moon, First Quarter, Full Moon, and Last Quarter.
     """
     ts = load.timescale()
-    eph = load('de421.bsp')
+    if ephemeris:
+        eph = ephemeris
+    else:
+        eph = load('de421.bsp')
     
     t0 = ts.utc(year_start, 1, 1)
     t1 = ts.utc(year_end + 1, 1, 1)

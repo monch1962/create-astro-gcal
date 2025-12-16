@@ -20,13 +20,13 @@ Calculates special intervals dividing the planetary day (Rise to Set) into speci
 ### 3. Planetary Aspects
 Calculates precise geometric angles between planets (Simultaneous **Geocentric** and **Heliocentric**).
 *   **Aspects**: Conjunction (0°), Sextile (60°), Quintile (72°), Square (90°), Trine (120°), Biquintile (144°), Opposition (180°).
-*   **Precision**: Calculates the exact minute the aspect enters and leaves a **1.0° Orb**, providing accurate durations.
+*   **Precision**: Uses **Vectorized** calculations for speed, finding the exact minute the aspect enters and leaves a **1.0° Orb**.
 *   **Calendars**: `Astro: {Planet} Geo` and `Astro: {Planet} Helio`
 
 ### 4. Eclipses
 Comprehensive detection of Solar and Lunar eclipses.
-*   **Solar**: Total and Partial Solar Eclipses.
-*   **Lunar**: Total, Partial, and Penumbral Lunar Eclipses.
+*   **Solar**: Total and Partial Solar Eclipses (using manual Separation check).
+*   **Lunar**: Total, Partial, and Penumbral Lunar Eclipses (using Skyfield Eclipselib).
 *   **Duration**: Calculated based on the exact start and end contacts.
 *   **Calendars**: `Astro: Solar Eclipses`, `Astro: Lunar Eclipses`
 
@@ -75,6 +75,24 @@ Identifies complex aspect patterns.
     pip install -r requirements.txt
     ```
     ```
+
+---
+
+## Technical Architecture
+
+The application is built using a modular, class-based architecture in the `astro/` package:
+- **Engine**: `AstroEngine` manages Skyfield ephemeris and timescale data centrally.
+- **Calculators**: Specialized classes (e.g., `AspectCalculator`, `AlmanacCalculator`) handle specific astronomical logic.
+- **Parallel Processing**: `main.py` utilizes `multiprocessing` to calculate events concurrently, significantly reducing execution time (from minutes to seconds).
+
+## Testing
+
+The project includes a comprehensive unit test suite using `pytest`.
+
+To run tests:
+```bash
+pytest
+```
 
 ---
 

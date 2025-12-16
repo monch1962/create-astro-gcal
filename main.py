@@ -1,235 +1,268 @@
 import config
-from astro import eclipses, almanac
+from astro import eclipses, almanac, aspects, retrograde, seasons, moon_features, zodiac, moon_phases, year_progress, patterns
 from collections import defaultdict
 import sys
 import datetime
+import concurrent.futures
+from utils import ics_writer
+import logging
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+logger = logging.getLogger(__name__)
+
+# --- Worker Functions (Must be top-level for pickling) ---
+
+def task_generate_eclipses(start_year, end_year):
+    logger.info("  [Task] Eclipses started...")
+    events = eclipses.get_eclipses(start_year, end_year)
+    processed_events = []
+    if events:
+        for e in events:
+            if e['type'] == 'solar_eclipse':
+                e['calendar'] = config.CALENDAR_NAMES['solar_eclipse']
+            elif e['type'] == 'lunar_eclipse':
+                e['calendar'] = config.CALENDAR_NAMES['lunar_eclipse']
+            processed_events.append(e)
+    logger.info(f"  [Task] Eclipses finished ({len(processed_events)} events).")
+    return processed_events
+
+def task_generate_aspects(start_year, end_year, bodies, aspects_list, orb, center_body):
+    sys_label = "geocentric" if center_body == 'earth' else "heliocentric"
+    logger.info(f"  [Task] Aspects ({sys_label}) started...")
+    
+    events = aspects.get_aspects(
+        start_year, end_year, 
+        planets_to_check=bodies,
+        aspects_to_check=aspects_list,
+        orb=orb,
+        center_body=center_body
+    )
+    processed_events = []
+    if events:
+        for e in events:
+            if center_body == 'sun':
+                e['summary'] = f"{e['summary']} (Helio)"
+                e['description'] = f"(Heliocentric) {e['description']}"
+                
+                if 'participants' in e:
+                        for p in e['participants']:
+                            p_clean = p.replace(' barycenter', '').title()
+                            e_copy = e.copy()
+                            e_copy['calendar'] = f"Astro: {p_clean} Helio"
+                            processed_events.append(e_copy)
+                else:
+                        e['calendar'] = "Astro: Aspects Helio"
+                        processed_events.append(e)
+            else:
+                if 'participants' in e:
+                    for p in e['participants']:
+                        p_clean = p.replace(' barycenter', '').title()
+                        e_copy = e.copy()
+                        e_copy['calendar'] = f"Astro: {p_clean} Geo"
+                        processed_events.append(e_copy)
+                else:
+                    e['calendar'] = "Astro: Aspects Geo"
+                    processed_events.append(e)
+    logger.info(f"  [Task] Aspects ({sys_label}) finished ({len(events)} raw events).")
+    return processed_events
+
+def task_generate_almanac(start_year, end_year, bodies, location_name, lat, lon):
+    logger.info("  [Task] Almanac started...")
+    events = almanac.get_almanac_events(
+        start_year, end_year, 
+        bodies=bodies,
+        location_name=location_name,
+        observer_lat=lat,
+        observer_lon=lon
+    )
+    processed_events = []
+    if events:
+        for e in events:
+            parts = e['summary'].split()
+            planet = parts[0] if parts else "Unknown"
+            if "(Rise-Set)" in e['summary']:
+                    e['calendar'] = f"Astro: {planet} Divisions"
+            else:
+                    e['calendar'] = f"Astro: {planet} Almanac"
+            processed_events.append(e)
+    logger.info(f"  [Task] Almanac finished ({len(processed_events)} events).")
+    return processed_events
+
+def task_generate_retrograde(start_year, end_year, planets):
+    logger.info("  [Task] Retrograde started...")
+    events = retrograde.get_retrograde_full(start_year, end_year, planets)
+    processed_events = []
+    if events:
+            for e in events:
+                cal = e.get('calendar', 'Astro: Retrograde')
+                if cal.startswith('Astro: ') and not cal.endswith(' Geo') and 'Retrograde' not in cal:
+                    e['calendar'] = f"{cal} Geo"
+                elif 'calendar' not in e:
+                    e['calendar'] = 'Astro: Retrograde Geo'
+                processed_events.append(e)
+    logger.info(f"  [Task] Retrograde finished ({len(processed_events)} events).")
+    return processed_events
+
+def task_generate_seasons(start_year, end_year):
+    logger.info("  [Task] Seasons started...")
+    events = seasons.get_seasons(start_year, end_year)
+    processed_events = []
+    if events:
+        for e in events:
+            if 'calendar' not in e:
+                e['calendar'] = 'Astro: Seasons'
+            processed_events.append(e)
+    logger.info(f"  [Task] Seasons finished ({len(processed_events)} events).")
+    return processed_events
+
+def task_generate_moon_features(start_year, end_year):
+    logger.info("  [Task] Moon Features started...")
+    events = moon_features.get_moon_features(start_year, end_year)
+    processed_events = []
+    if events:
+        for e in events:
+            if 'calendar' not in e:
+                e['calendar'] = 'Astro: Moon Features'
+            processed_events.append(e)
+    logger.info(f"  [Task] Moon Features finished ({len(processed_events)} events).")
+    return processed_events
+
+def task_generate_zodiac(start_year, end_year, bodies):
+    logger.info("  [Task] Zodiac Ingress started...")
+    events = zodiac.get_zodiac_ingress(start_year, end_year, bodies)
+    logger.info(f"  [Task] Zodiac Ingress finished ({len(events) if events else 0} events).")
+    return events or []
+
+def task_generate_moon_phases(start_year, end_year):
+    logger.info("  [Task] Moon Phases started...")
+    events = moon_phases.get_moon_phases(start_year, end_year)
+    logger.info(f"  [Task] Moon Phases finished ({len(events) if events else 0} events).")
+    return events or []
+
+def task_generate_calendar_year(start_year, end_year):
+    logger.info("  [Task] Calendar Year Progress started...")
+    events = year_progress.get_calendar_year_events(start_year, end_year)
+    logger.info(f"  [Task] Calendar Year Progress finished ({len(events) if events else 0} events).")
+    return events or []
+
+def task_generate_solar_year(start_year, end_year):
+    logger.info("  [Task] Solar Year Progress started...")
+    events = year_progress.get_solar_year_events(start_year, end_year)
+    logger.info(f"  [Task] Solar Year Progress finished ({len(events) if events else 0} events).")
+    return events or []
+
+def task_generate_patterns(start_year, end_year, bodies):
+    logger.info("  [Task] Patterns (Square/Trine) started...")
+    events = patterns.get_square_trine_patterns(start_year, end_year, bodies)
+    logger.info(f"  [Task] Patterns finished ({len(events) if events else 0} events).")
+    return events or []
+
 
 def main():
-    print("Starting Astro GCal Generator...")
-    
-    print(f"Output Mode: {config.OUTPUT_MODE}")
+    logger.info("Starting Astro GCal Generator (Parallel Mode)...")
+    logger.info(f"Output Mode: {config.OUTPUT_MODE}")
     
     # 2. Resolve Location
     lat, lon = config.OBSERVER_LAT, config.OBSERVER_LON
+    location_name = config.OBSERVER_CITY if config.OBSERVER_CITY else "Local Location"
+    
     if config.OBSERVER_CITY:
         from utils import geocoding
-        print(f"Resolving location for '{config.OBSERVER_CITY}'...")
+        logger.info(f"Resolving location for '{config.OBSERVER_CITY}'...")
         coords = geocoding.get_lat_lon(config.OBSERVER_CITY)
         if coords:
             lat, lon = coords
-            print(f"  Found coordinates: {lat}, {lon}")
+            logger.info(f"  Found coordinates: {lat}, {lon}")
         else:
-            print(f"  Could not find '{config.OBSERVER_CITY}'. Using default: {lat}, {lon}")
-    
-    # 3. Generate Events
+            logger.warning(f"  Could not find '{config.OBSERVER_CITY}'. Using default: {lat}, {lon}")
+            
+    # 3. Generate Events in Parallel
     all_events = []
     
-    # --- Eclipses ---
-    if config.ENABLE_ECLIPSES:
-        print("Processing Eclipses...")
-        events = eclipses.get_eclipses(config.START_YEAR, config.END_YEAR)
-        if events:
-            # Type to Calendar Mapping
-            for e in events:
-                if e['type'] == 'solar_eclipse':
-                    e['calendar'] = config.CALENDAR_NAMES['solar_eclipse']
-                elif e['type'] == 'lunar_eclipse':
-                    e['calendar'] = config.CALENDAR_NAMES['lunar_eclipse']
-                all_events.append(e)
-            print(f"  Found {len(events)} eclipse events.")
-        else:
-            print("  No eclipses found.")
-
-    # --- Aspects ---
-    if config.ENABLE_ASPECTS:
-        print("Processing Planetary Aspects...")
-        from astro import aspects
+    with concurrent.futures.ProcessPoolExecutor() as executor:
+        futures = {}
         
-        systems = ['earth', 'sun']
-        
-        for sys_name in systems:
-            sys_label = "geocentric" if sys_name == 'earth' else "heliocentric"
-            print(f"  Generating {sys_label} aspects...")
-            events = aspects.get_aspects(
-                config.START_YEAR, config.END_YEAR, 
-                planets_to_check=config.CONJUNCTION_PLANETS,
-                aspects_to_check=config.ASPECTS_TO_TRACK,
-                orb=config.ASPECT_ORB,
-                center_body=sys_name
-            )
+        # Submit tasks
+        if config.ENABLE_ECLIPSES:
+            futures[executor.submit(task_generate_eclipses, config.START_YEAR, config.END_YEAR)] = 'Eclipses'
             
-            if events:
-                for e in events:
-                    if sys_name == 'sun':
-                        e['summary'] = f"{e['summary']} (Helio)"
-                        e['description'] = f"(Heliocentric) {e['description']}"
-                        
-                        if 'participants' in e:
-                             for p in e['participants']:
-                                 p_clean = p.replace(' barycenter', '').title()
-                                 e_copy = e.copy()
-                                 e_copy['calendar'] = f"Astro: {p_clean} Helio"
-                                 all_events.append(e_copy)
-                        else:
-                             e['calendar'] = "Astro: Aspects Helio"
-                             all_events.append(e)
+        if config.ENABLE_ASPECTS:
+            # Geocentric
+            futures[executor.submit(
+                task_generate_aspects, 
+                config.START_YEAR, config.END_YEAR, 
+                config.CONJUNCTION_PLANETS, config.ASPECTS_TO_TRACK, config.ASPECT_ORB, 'earth'
+            )] = 'Aspects Geo'
+            
+            # Heliocentric
+            futures[executor.submit(
+                task_generate_aspects, 
+                config.START_YEAR, config.END_YEAR, 
+                config.CONJUNCTION_PLANETS, config.ASPECTS_TO_TRACK, config.ASPECT_ORB, 'sun'
+            )] = 'Aspects Helio'
+            
+        if config.ENABLE_ALMANAC:
+            futures[executor.submit(
+                task_generate_almanac,
+                config.START_YEAR, config.END_YEAR,
+                config.ALMANAC_BODIES, location_name, lat, lon
+            )] = 'Almanac'
+            
+        if config.ENABLE_RETROGRADE:
+            futures[executor.submit(
+                task_generate_retrograde,
+                config.START_YEAR, config.END_YEAR, config.RETROGRADE_PLANETS
+            )] = 'Retrograde'
+            
+        if getattr(config, 'ENABLE_SEASONS', False):
+            futures[executor.submit(task_generate_seasons, config.START_YEAR, config.END_YEAR)] = 'Seasons'
+            
+        if getattr(config, 'ENABLE_MOON_FEATURES', False):
+            futures[executor.submit(task_generate_moon_features, config.START_YEAR, config.END_YEAR)] = 'Moon Features'
+            
+        if getattr(config, 'ENABLE_ZODIAC', False):
+            futures[executor.submit(
+                task_generate_zodiac, config.START_YEAR, config.END_YEAR, config.ALMANAC_BODIES
+            )] = 'Zodiac'
+            
+        if getattr(config, 'ENABLE_MOON_PHASES', False):
+            futures[executor.submit(task_generate_moon_phases, config.START_YEAR, config.END_YEAR)] = 'Moon Phases'
+            
+        if getattr(config, 'ENABLE_CALENDAR_YEAR_PROGRESS', False):
+            futures[executor.submit(task_generate_calendar_year, config.START_YEAR, config.END_YEAR)] = 'Calendar Year'
+            
+        if getattr(config, 'ENABLE_SOLAR_YEAR_PROGRESS', False):
+            futures[executor.submit(task_generate_solar_year, config.START_YEAR, config.END_YEAR)] = 'Solar Year'
+            
+        if getattr(config, 'ENABLE_PATTERNS', False):
+            futures[executor.submit(
+                task_generate_patterns, config.START_YEAR, config.END_YEAR, config.ALMANAC_BODIES
+            )] = 'Patterns'
 
-                    else:
-                        if 'participants' in e:
-                            for p in e['participants']:
-                                p_clean = p.replace(' barycenter', '').title()
-                                e_copy = e.copy()
-                                e_copy['calendar'] = f"Astro: {p_clean} Geo"
-                                all_events.append(e_copy)
-                        else:
-                            e['calendar'] = "Astro: Aspects Geo"
-                            all_events.append(e)
-                print(f"    Found {len(events)} {sys_label} events.")
-            else:
-                 print(f"    No {sys_label} aspects found.")
-
-    # --- Almanac (Rise/Set/MC/IC) ---
-    if config.ENABLE_ALMANAC:
-        print("Processing Almanac (Rise/Set/MC/IC)...")
-        from astro import almanac
-        events = almanac.get_almanac_events(
-            config.START_YEAR, config.END_YEAR, 
-            bodies=config.ALMANAC_BODIES,
-            location_name=config.OBSERVER_CITY if config.OBSERVER_CITY else "Local Location",
-            observer_lat=lat,
-            observer_lon=lon
-        )
-        if events:
-            for e in events:
-                parts = e['summary'].split()
-                planet = parts[0] if parts else "Unknown"
-                if "(Rise-Set)" in e['summary']:
-                     e['calendar'] = f"Astro: {planet} Divisions"
-                else:
-                     e['calendar'] = f"Astro: {planet} Almanac"
-                all_events.append(e)
-            print(f"  Found {len(events)} almanac events.")
-        else:
-            print("  No almanac events found.")
-
-    # --- Retrograde ---
-    if config.ENABLE_RETROGRADE:
-        print("Processing Retrograde Motion...")
-        from astro import retrograde
-        events = retrograde.get_retrograde_full(
-            config.START_YEAR, config.END_YEAR,
-            config.RETROGRADE_PLANETS
-        )
-        if events:
-             for e in events:
-                 cal = e.get('calendar', 'Astro: Retrograde')
-                 if cal.startswith('Astro: ') and not cal.endswith(' Geo') and 'Retrograde' not in cal:
-                      e['calendar'] = f"{cal} Geo"
-                 elif 'calendar' not in e:
-                      e['calendar'] = 'Astro: Retrograde Geo'
-                 all_events.append(e)
-             print(f"  Found {len(events)} retrograde events.")
-        else:
-             print("  No retrograde events found.")
-
-    # --- Seasons ---
-    if getattr(config, 'ENABLE_SEASONS', False):
-        print("Processing Seasonal Events...")
-        from astro import seasons
-        events = seasons.get_seasons(config.START_YEAR, config.END_YEAR)
-        if events:
-             for e in events:
-                all_events.append(e)
-             print(f"  Found {len(events)} seasonal events.")
-        else:
-            print("  No seasonal events found.")
-
-    # --- Moon Features (Nodes/Extremes) ---
-    if getattr(config, 'ENABLE_MOON_FEATURES', False):
-        print("Processing Moon Features (Nodes/Extremes)...")
-        from astro import moon_features
-        events = moon_features.get_moon_features(config.START_YEAR, config.END_YEAR)
-        if events:
-             for e in events:
-                all_events.append(e)
-             print(f"  Found {len(events)} moon feature events.")
-        else:
-            print("  No moon feature events found.")
-
-    # --- Zodiac Ingress ---
-    if getattr(config, 'ENABLE_ZODIAC', False):
-        print("Processing Zodiac Ingress...")
-        from astro import zodiac
-        events = zodiac.get_zodiac_ingress(
-            config.START_YEAR, config.END_YEAR, 
-            bodies=config.ALMANAC_BODIES
-        )
-        if events:
-             for e in events:
-                all_events.append(e)
-             print(f"  Found {len(events)} zodiac ingress events.")
-        else:
-            print("  No zodiac ingress events found.")
-
-    # --- Moon Phases ---
-    if getattr(config, 'ENABLE_MOON_PHASES', False):
-        print("Processing Moon Phases...")
-        from astro import moon_phases
-        events = moon_phases.get_moon_phases(config.START_YEAR, config.END_YEAR)
-        if events:
-            for e in events:
-                all_events.append(e)
-            print(f"  Found {len(events)} moon phase events.")
-        else:
-            print("  No moon phase events found.")
-    
-    # --- Calendar Year Progress ---
-    if getattr(config, 'ENABLE_CALENDAR_YEAR_PROGRESS', False):
-        print("Processing Calendar Year Progress...")
-        from astro import year_progress
-        events = year_progress.get_calendar_year_events(config.START_YEAR, config.END_YEAR)
-        if events:
-            for e in events:
-                all_events.append(e)
-            print(f"  Found {len(events)} calendar year progress events.")
-        else:
-            print("  No calendar year progress events found.")
-
-    # --- Solar Year Progress ---
-    if getattr(config, 'ENABLE_SOLAR_YEAR_PROGRESS', False):
-        print("Processing Solar Year Progress...")
-        from astro import year_progress
-        events = year_progress.get_solar_year_events(config.START_YEAR, config.END_YEAR)
-        if events:
-            for e in events:
-                all_events.append(e)
-            print(f"  Found {len(events)} solar year progress events.")
-        else:
-            print("  No solar year progress events found.")
-
-    # --- Patterns (Square & Trine) ---
-    if getattr(config, 'ENABLE_PATTERNS', False):
-        print("Processing Patterns (Square & Trine)...")
-        from astro import patterns
-        pattern_events = patterns.get_square_trine_patterns(
-            config.START_YEAR, config.END_YEAR,
-            config.ALMANAC_BODIES
-        )
-        if pattern_events:
-            for e in pattern_events:
-                all_events.append(e)
-            print(f"  Found {len(pattern_events)} square & trine patterns.")
-        else:
-            print("  No square & trine patterns found.")
+        logger.info(f"Submitted {len(futures)} tasks to process pool.")
+        
+        # Collect results
+        for future in concurrent.futures.as_completed(futures):
+            task_name = futures[future]
+            try:
+                events = future.result()
+                all_events.extend(events)
+            except Exception as e:
+                logger.error(f"Task '{task_name}' generated an exception: {e}")
+                import traceback
+                traceback.print_exc()
 
     # 4. Output Logic
-    print(f"\nTotal Events Generated: {len(all_events)}")
+    logger.info(f"Total Events Generated: {len(all_events)}")
     
-    # Convert datetimes to isoformat strings if JSON output
     if config.OUTPUT_MODE == 'json':
         import json
         output_file = 'demo_output.json'
-        # Deep copy
         json_events = []
         for e in all_events:
             e_copy = e.copy()
@@ -240,29 +273,28 @@ def main():
             
         with open(output_file, 'w') as f:
             json.dump(json_events, f, indent=2)
-        print(f"Written events to '{output_file}'.")
+        logger.info(f"Written events to '{output_file}'.")
 
     elif config.OUTPUT_MODE == 'ics':
-        from utils import ics_writer
         # Group by calendar
         events_by_cal = defaultdict(list)
         for e in all_events:
             cal_name = e.get('calendar', 'Astro: General')
             events_by_cal[cal_name].append(e)
             
-        # Determine file prefix
         if config.START_YEAR == config.END_YEAR:
             file_prefix = str(config.START_YEAR)
         else:
             file_prefix = f"{config.START_YEAR}-{config.END_YEAR}"
 
-        print("Exporting ICS files...")
+        logger.info("Exporting ICS files...")
         for cal_name, evts in events_by_cal.items():
             ics_writer.write_ics(cal_name, evts, file_prefix=file_prefix)
     
     else:
-        print(f"Unknown output mode: {config.OUTPUT_MODE}")
+        logger.error(f"Unknown output mode: {config.OUTPUT_MODE}")
 
 if __name__ == "__main__":
     main()
+
 

@@ -3,6 +3,23 @@ from skyfield import almanac
 import datetime
 
 class SeasonCalculator:
+    """
+    Calculates the four astronomical seasons.
+
+    Purpose:
+        - Identifies exact times of Vernal Equinox, Summer Solstice, Autumnal Equinox, and Winter Solstice.
+        - Uses Skyfield's almanac.seasons.
+
+    Usage:
+        calc = SeasonCalculator(engine)
+        events = calc.get_seasons(2024, 2024)
+        
+        # Output:
+        #   List of dictionaries, e.g.:
+        #   [
+        #     {'type': 'season', 'summary': 'Vernal Equinox (Spring)', 'start_time': <datetime>, ...},
+        #   ]
+    """
     def __init__(self, engine):
         self.engine = engine
 

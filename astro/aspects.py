@@ -15,6 +15,33 @@ ASPECTS = {
 }
 
 class AspectCalculator:
+    """
+    Calculates exact astrological aspects between planets.
+    
+    Purpose:
+        - Identifies Conjunctions, Sextiles, Squares, Trines, Oppositions, etc.
+        - Calculates precise start/end times based on an 'Orb' (degree of tolerance).
+        - Determines exact moment of 0-degree separation ("Exactness").
+        
+    Usage:
+        from astro.aspects import AspectCalculator
+        
+        calc = AspectCalculator(engine)
+        events = calc.get_aspects(
+            year_start=2024,
+            year_end=2024,
+            planets_to_check=['Sun', 'Jupiter', 'Saturn'],
+            aspects_to_check=['conjunction', 'square'],
+            orb=1.0,
+            center_body='earth' # or 'sun' for Heliocentric
+        )
+        
+        # Output:
+        #   List of dictionaries, e.g.:
+        #   [
+        #     {'type': 'aspect', 'summary': 'Conjunction: Sun - Jupiter', 'start_time': <datetime>, 'duration_minutes': <int>, ...},
+        #   ]
+    """
     def __init__(self, engine):
         self.engine = engine
 

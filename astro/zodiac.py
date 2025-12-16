@@ -9,6 +9,23 @@ ZODIAC_SIGNS = [
 ]
 
 class ZodiacCalculator:
+    """
+    Calculates planetary ingress into Zodiac signs.
+
+    Purpose:
+        - Determines when a planet crosses the boundary of a Tropical Zodiac sign (0, 30, 60... degrees Ecliptic Longitude).
+        - Supports Sun, Moon, and planets.
+
+    Usage:
+        calc = ZodiacCalculator(engine)
+        events = calc.get_zodiac_ingress(2024, 2024, bodies=['Sun', 'Mars'])
+        
+        # Output:
+        #   List of dictionaries, e.g.:
+        #   [
+        #     {'type': 'zodiac_ingress', 'summary': 'Sun enters Aries', 'start_time': <datetime>, ...},
+        #   ]
+    """
     def __init__(self, engine):
         self.engine = engine
 

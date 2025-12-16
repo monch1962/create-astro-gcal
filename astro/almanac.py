@@ -4,6 +4,35 @@ import datetime
 import pytz
 
 class AlmanacCalculator:
+    """
+    Calculates daily almanac events for celestial bodies.
+
+    Purpose:
+        - Determines Rise, Set, Meridian Transit (MC), and Anti-Meridian (IC) times.
+        - Can calculate subdivision events (e.g., dividing the day/night into equal parts) if enabled.
+        - Supports any list of planetary bodies.
+        
+    Usage:
+        from astro.almanac import AlmanacCalculator
+        
+        calc = AlmanacCalculator(engine)
+        
+        events = calc.get_almanac_events(
+            year_start=2024,
+            year_end=2024,
+            bodies=['Sun', 'Moon', 'Mars'],
+            location_name="New York",
+            observer_lat=40.7128,
+            observer_lon=-74.0060
+        )
+        
+        # Output:
+        #   List of dictionaries, e.g.:
+        #   [
+        #     {'type': 'almanac', 'summary': 'Sun Rise', 'start_time': <datetime>, ...},
+        #     {'type': 'almanac', 'summary': 'Sun Set', 'start_time': <datetime>, ...},
+        #   ]
+    """
     def __init__(self, engine):
         self.engine = engine
 

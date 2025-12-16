@@ -3,6 +3,26 @@ from skyfield.framelib import ecliptic_frame
 import datetime
 
 class RetrogradeCalculator:
+    """
+    Calculates planetary retrograde motion stations and shadow periods.
+
+    Purpose:
+        - Identifies "Retrograde Station" (Direct -> Retrograde) and "Direct Station" (Retrograde -> Direct).
+        - Calculates "Shadow Exit" (when planet returns to the longitude where it started retrograding).
+        - Analyzes apparent longitude velocity relative to Earth.
+
+    Usage:
+        calc = RetrogradeCalculator(engine)
+        events = calc.get_retrograde_events(2024, 2024, planets_to_check=['Mercury', 'Venus'])
+
+        # Output:
+        #   List of dictionaries, e.g.:
+        #   [
+        #     {'type': 'retrograde', 'summary': 'Mercury Retrograde', 'start_time': <datetime>, ...}, # Station R
+        #     {'type': 'retrograde', 'summary': 'Mercury Direct', 'start_time': <datetime>, ...}, # Station D
+        #     {'type': 'retrograde', 'summary': 'Mercury Shadow Exit', 'start_time': <datetime>, ...},
+        #   ]
+    """
     def __init__(self, engine):
         self.engine = engine
 

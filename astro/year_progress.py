@@ -3,6 +3,26 @@ from skyfield.api import load
 from skyfield import almanac
 
 class YearProgressCalculator:
+    """
+    Calculates progress markers for Calendar and Solar years.
+
+    Purpose:
+        - Calendar Year: Fixed Jan 1 to Jan 1.
+        - Solar Year: Vernal Equinox to Vernal Equinox (Tropical Year).
+        - Generates "1/16th" milestones and "Square Number Day" milestones (Day 4, 9, 16...).
+
+    Usage:
+        calc = YearProgressCalculator(engine)
+        events = calc.get_calendar_year_events(2024, 2024)
+        events += calc.get_solar_year_events(2024, 2024)
+        
+        # Output:
+        #   List of dictionaries, e.g.:
+        #   [
+        #     {'type': 'year_progress_fraction', 'summary': 'Calendar Year: 1/16 (6.2%)', ...},
+        #     {'type': 'year_progress_square', 'summary': 'Calendar Year Day 4 (2²)', ...},
+        #   ]
+    """
     def __init__(self, engine):
         self.engine = engine
 

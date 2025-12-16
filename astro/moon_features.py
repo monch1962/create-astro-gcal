@@ -5,6 +5,24 @@ import numpy as np
 import datetime
 
 class MoonFeatureCalculator:
+    """
+    Calculates miscellaneous lunar events.
+
+    Purpose:
+        - Lunar Nodes: Ascending (North Node) and Descending (South Node) ecliptic crossings.
+        - Declination Extremes: Moon Furthest North/South (Lunar Standstills).
+
+    Usage:
+        calc = MoonFeatureCalculator(engine)
+        events = calc.get_moon_features(2024, 2024)
+        
+        # Output:
+        #   List of dictionaries, e.g.:
+        #   [
+        #     {'type': 'moon_feature', 'summary': 'Moon North Node', 'start_time': <datetime>, ...},
+        #     {'type': 'moon_feature', 'summary': 'Moon Furthest North', 'start_time': <datetime>, ...},
+        #   ]
+    """
     def __init__(self, engine):
         self.engine = engine
 

@@ -5,6 +5,26 @@ import datetime
 import pytz
 
 class EclipseCalculator:
+    """
+    Detects Solar and Lunar eclipses.
+
+    Purpose:
+        - Solar Eclipses: Uses a manual detection method (New Moon + Solar-Lunar separation check) 
+          as Skyfield's search_global is not available in the current version.
+        - Lunar Eclipses: Uses Skyfield's eclipselib.lunar_eclipses function.
+        - Calculates duration for both types using binary search on separation/shadow thresholds.
+
+    Usage:
+        calc = EclipseCalculator(engine)
+        events = calc.get_eclipses(2024, 2024)
+        
+        # Output:
+        #   List of dictionaries, e.g.:
+        #   [
+        #     {'type': 'solar_eclipse', 'summary': 'Total Solar Eclipse', 'start_time': <datetime>, 'duration_minutes': <int>, ...},
+        #     {'type': 'lunar_eclipse', 'summary': 'Partial Lunar Eclipse', 'start_time': <datetime>, ...},
+        #   ]
+    """
     def __init__(self, engine):
         self.engine = engine
 

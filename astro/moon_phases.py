@@ -2,6 +2,24 @@ from skyfield.api import load
 from skyfield import almanac
 
 class MoonPhaseCalculator:
+    """
+    Calculates the four primary Moon phases.
+
+    Purpose:
+        - Identifies New Moon, First Quarter, Full Moon, and Last Quarter.
+        - Uses Skyfield's almanac.moon_phases.
+
+    Usage:
+        calc = MoonPhaseCalculator(engine)
+        events = calc.get_moon_phases(2024, 2024)
+        
+        # Output:
+        #   List of dictionaries, e.g.:
+        #   [
+        #     {'type': 'moon_phase', 'summary': 'New Moon', 'start_time': <datetime>, ...},
+        #     {'type': 'moon_phase', 'summary': 'First Quarter Moon', 'start_time': <datetime>, ...},
+        #   ]
+    """
     def __init__(self, engine):
         self.engine = engine
 

@@ -3,6 +3,23 @@ from collections import defaultdict
 import datetime
 
 class PatternCalculator:
+    """
+    Identifies compound astrological patterns.
+
+    Purpose:
+        - Detects complex patterns formed by multiple aspects occurring simultaneously.
+        - Currently supports "Square + Trine" pattern: One planet simultaneously Square a second AND Trine a third.
+
+    Usage:
+        calc = PatternCalculator(engine)
+        events = calc.get_square_trine_patterns(2024, 2024, bodies=['Mars', 'Jupiter', 'Saturn'])
+        
+        # Output:
+        #   List of dictionaries, e.g.:
+        #   [
+        #     {'type': 'pattern_square_trine', 'summary': 'Mars: Sq Jupiter & Tri Saturn', 'start_time': <datetime>, 'duration_minutes': <int>, ...},
+        #   ]
+    """
     def __init__(self, engine):
         self.engine = engine
         self.aspect_calc = AspectCalculator(engine)

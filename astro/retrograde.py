@@ -53,14 +53,28 @@ class RetrogradeCalculator:
             if clean_name not in name_map: continue
             body = eph[name_map[clean_name]]
             
-            def get_lon(t):
+            def get_lon_apparent(t):
                 _, lon, _ = earth.at(t).observe(body).apparent().frame_latlon(ecliptic_frame)
                 return lon.degrees
                 
-            def get_velocity(t):
+            def get_lon_astrometric(t):
+                # Faster geometric position for coarse search
+                _, lon, _ = earth.at(t).observe(body).frame_latlon(ecliptic_frame)
+                return lon.degrees
+
+            def get_velocity_astrometric(t):
                 dt = 1.0 / 1440.0 # 1 min
-                l1 = get_lon(t)
-                l2 = get_lon(ts.tt_jd(t.tt + dt))
+                l1 = get_lon_astrometric(t)
+                l2 = get_lon_astrometric(ts.tt_jd(t.tt + dt))
+                d = l2 - l1
+                if d > 180: d -= 360
+                if d < -180: d += 360
+                return d
+                
+            def get_velocity_apparent(t):
+                dt = 1.0 / 1440.0 # 1 min
+                l1 = get_lon_apparent(t)
+                l2 = get_lon_apparent(ts.tt_jd(t.tt + dt))
                 d = l2 - l1
                 if d > 180: d -= 360
                 if d < -180: d += 360
@@ -70,8 +84,8 @@ class RetrogradeCalculator:
             current_t = t_start_scan
             end_t = t_end_scan
             
-            # Initial State
-            v = get_velocity(current_t)
+            # Initial State (Use Astrometric for consistency with loop)
+            v = get_velocity_astrometric(current_t)
             is_retro = v < 0
             
             stations = [] # (time, type='R'|'D', lon)
@@ -81,15 +95,17 @@ class RetrogradeCalculator:
             for i in range(days_total):
                 t_check = ts.utc(year_start, 1, 1 + i)
                 t_next = ts.utc(year_start, 1, 1 + i + 1)
-                v_next = get_velocity(t_next)
+                
+                # OPTIMIZATION: Use Astrometric velocity for daily check
+                v_next = get_velocity_astrometric(t_next)
                 is_retro_next = v_next < 0
                 
                 if is_retro != is_retro_next:
-                    # Find exact
+                    # Find exact using Apparent Velocity (Precision)
                     low, high = t_check, t_next
                     for _ in range(15):
                         mid = ts.tt_jd((low.tt + high.tt)/2)
-                        vm = get_velocity(mid)
+                        vm = get_velocity_apparent(mid)
                         if is_retro: # R to D (Direct Station)
                             if vm < 0: low = mid
                             else: high = mid
@@ -99,7 +115,7 @@ class RetrogradeCalculator:
                     
                     st_time = high
                     st_type = 'D' if is_retro else 'R' # If was R, now D.
-                    st_lon = get_lon(st_time)
+                    st_lon = get_lon_apparent(st_time)
                     
                     stations.append({
                         'time': st_time,
@@ -143,7 +159,7 @@ class RetrogradeCalculator:
                             
                             # Distance to target
                             def diff_target(t):
-                                l = get_lon(t)
+                                l = get_lon_apparent(t)
                                 d = l - target_lon
                                 if d > 180: d -= 360
                                 if d < -180: d += 360

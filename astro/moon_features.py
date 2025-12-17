@@ -91,13 +91,16 @@ class MoonFeatureCalculator:
 
         t_ext, y_ext = almanac.find_discrete(t0, t1, moon_declination_rate)
 
+        last_t_ext = None
         for ti, yi in zip(t_ext, y_ext):
+            # Filter noise: Extremes coincide with derivative=0.
+            # Numerical noise can cause rapid flipping around the zero-crossing.
+            # Max/Min are separated by ~14 days. Ignore events closer than 5 days.
+            if last_t_ext is not None and (ti.tt - last_t_ext.tt) < 5.0:
+                continue
+            last_t_ext = ti
+
             dt = ti.utc_datetime()
-            # yi is the NEW state.
-            # If yi is True (Increasing), we were decreasing before? No.
-            # find_discrete finds when return value CHANGES.
-            # If Change to True (Now Increasing), previous was Decreasing -> Minimum (South)
-            # If Change to False (Now Decreasing), previous was Increasing -> Maximum (North)
             
             if yi:
                 # Changed from Decreasing to Increasing -> Min (South Peak)

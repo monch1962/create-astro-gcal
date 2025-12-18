@@ -31,8 +31,9 @@ class RetrogradeCalculator:
         eph = self.engine.eph
         earth = eph['earth']
         
-        # Scan wide enough to catch start/end of loops
-        t_start_scan = ts.utc(year_start, 1, 1)
+        # Scan wide enough to catch start/end of loops.
+        # Start 1 year early to catch Rx stations that started in previous year.
+        t_start_scan = ts.utc(year_start - 1, 1, 1)
         t_end_scan = ts.utc(year_end + 2, 1, 1) 
 
         events = []

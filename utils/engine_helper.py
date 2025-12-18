@@ -11,3 +11,10 @@ def get_shared_engine():
     if _ENGINE_INSTANCE is None:
         _ENGINE_INSTANCE = AstroEngine()
     return _ENGINE_INSTANCE
+
+def reset_engine():
+    """
+    Resets the global engine instance (useful for testing).
+    """
+    global _ENGINE_INSTANCE
+    _ENGINE_INSTANCE = None
